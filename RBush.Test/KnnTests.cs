@@ -106,4 +106,59 @@ public class KnnTests
 			.ToList();
 		Assert.Equal(expected, result);
 	}
+
+	private sealed record class Point1(double X, double Y) : ISpatialData
+	{
+		private readonly Envelope _envelope =
+			new(
+				MinX: X,
+				MinY: Y,
+				MaxX: X,
+				MaxY: Y
+			);
+		public ref readonly Envelope Envelope => ref _envelope;
+	}
+
+	private sealed record class Circle(double CentroidX, double CentroidY, double Radius) : ISpatialData
+	{
+		private readonly Envelope _envelope =
+			new(
+				MinX: CentroidX - Radius,
+				MinY: CentroidY - Radius,
+				MaxX: CentroidX + Radius,
+				MaxY: CentroidY + Radius
+			);
+
+		public ref readonly Envelope Envelope => ref _envelope;
+
+		public double DistanceTo(Point1 point)
+		{
+			var sqr = Math.Pow(CentroidX - point.X, 2) + Math.Pow(CentroidY - point.Y, 2);
+			var result = Math.Sqrt(sqr) - Radius;
+			return result > 0 ? result : 0;
+		}
+	}
+
+	[Test]
+	public void KnnHandlesCircle()
+	{
+		var circles = new[]
+		{
+			new Circle(0, 0, 1),
+			new Circle(2, 1, 0.99),
+		};
+		var bush = new RBush<Circle>();
+		bush.BulkLoad(circles);
+		var queryPoint = new Point1(1, 1);
+		var knn1Result = bush.Knn1(1, queryPoint, (a, b) => a.DistanceTo(b));
+		var query = from x in circles
+					let d = x.DistanceTo(queryPoint)
+					orderby d
+					select x;
+		var expected = query.First();
+		Assert.Equal(expected, knn1Result[0].Item);
+		//var knnResult = bush.Knn(1, queryPoint.X, queryPoint.Y);
+		//Failed!
+		//Assert.Equal(expected, knnResult[0]);
+	}
 }

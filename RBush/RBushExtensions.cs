@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 
 namespace RBush;
 
@@ -7,8 +7,18 @@ namespace RBush;
 /// </summary>
 public static class RBushExtensions
 {
+	/// <summary>
+	/// Represents an item and its associated distance from a reference point or element.
+	/// </summary>
+	/// <typeparam name="T">The type of the item being measured.</typeparam>
+	/// <param name="Item">The item being measured.</param>
+	/// <param name="Distance">The distance of the item from a reference point or element.</param>
+	/// <remarks>
+	/// This structure is commonly used in nearest neighbor searches, such as KNN (k-nearest neighbors),
+	/// to store the result of a spatial query along with the calculated distance.
+	/// </remarks>
 	[StructLayout(LayoutKind.Sequential)]
-	private record struct ItemDistance<T>(T Item, double Distance);
+	public record struct ItemDistance<T>(T Item, double Distance);
 
 	/// <summary>
 	/// Get the <paramref name="k"/> nearest neighbors to a specific point.
@@ -78,5 +88,109 @@ public static class RBushExtensions
 		   p < min ? min - p :
 		   p > max ? p - max :
 		   0;
+	}
+
+	/// <summary>
+	/// Retrieves the <paramref name="k"/> nearest neighbors to the specified <paramref name="element"/> 
+	/// in the given <paramref name="tree"/> using a custom distance function.
+	/// </summary>
+	/// <typeparam name="T1">The type of elements stored in the <paramref name="tree"/>.</typeparam>
+	/// <typeparam name="T2">The type of the query <paramref name="element"/>.</typeparam>
+	/// <param name="tree">An <see cref="RBush{T1}"/> instance containing spatial data.</param>
+	/// <param name="k">The number of nearest neighbors to retrieve. Must be greater than 0.</param>
+	/// <param name="element">The query element for which the nearest neighbors are to be found.</param>
+	/// <param name="func">A function that calculates the distance between an element of type <typeparamref name="T1"/> 
+	/// and the query element of type <typeparamref name="T2"/>.</param>
+	/// <returns>
+	/// A list of up to <paramref name="k"/> nearest neighbors, represented as 
+	/// <see cref="ItemDistance{T1}"/> objects, sorted by ascending distance.
+	/// </returns>
+	/// <exception cref="ArgumentNullException">
+	/// Thrown if <paramref name="tree"/> or <paramref name="func"/> is <see langword="null"/>.
+	/// </exception>
+	/// <remarks>
+	/// This method uses a priority queue (min-heap) to efficiently find the nearest neighbors.
+	/// It traverses the R-tree, pruning branches that cannot contain closer neighbors than 
+	/// the current farthest neighbor in the result set.
+	/// </remarks>
+	public static IReadOnlyList<ItemDistance<T1>> Knn1<T1, T2>(
+		this RBush<T1> tree,
+		int k,
+		T2 element,
+		Func<T1, T2, double> func)
+		where T1 : ISpatialData
+		where T2 : ISpatialData
+	{
+		ArgumentNullException.ThrowIfNull(tree);
+		ArgumentNullException.ThrowIfNull(func);
+
+		if (k <= 0)
+		{
+			return [];
+		}
+
+		// minHeap, size = k
+		var distances = new SortedList<double, T1>(k, s_compareDouble);
+		var queue = new SortedList<double, RBush<T1>.Node>(s_compareDouble)
+		{
+			{ MinDistance(in tree.Root.Envelope, in element.Envelope), tree.Root },
+		};
+
+		while (queue.Count > 0)
+		{
+			var item = queue.First().Value;
+			queue.RemoveAt(0);
+			if (item.IsLeaf)
+			{
+				foreach (var i in item.Items)
+				{
+					var distance = func((T1)i, element);
+					if (distances.Count < k)
+					{
+						distances.Add(distance, (T1)i);
+					}
+					else
+					{
+						if (distance < distances.Last().Key)
+						{
+							distances.RemoveAt(distances.Count - 1);
+							distances.Add(distance, (T1)i);
+						}
+					}
+				}
+			}
+			else
+			{
+				foreach (var i in item.Items)
+				{
+					var min = MinDistance(in i.Envelope, in element.Envelope);
+					if (distances.Count < k || distances.Last().Key > min)
+					{
+						queue.Add(min, (RBush<T1>.Node)i);
+					}
+				}
+			}
+		}
+
+		return distances.Select(x => new ItemDistance<T1>(x.Value, x.Key)).ToList();
+	}
+
+	private static readonly IComparer<double> s_compareDouble =
+	Comparer<double>.Create((x, y) =>
+	{
+		var result = x.CompareTo(y);
+		return result == 0 ? -1 : result;
+	});
+
+	private static double MinDistance(in Envelope e1, in Envelope e2)
+	{
+		if (e1.Intersects(e2))
+		{
+			return 0;
+		}
+
+		var dx = Math.Max(0, Math.Max(e1.MinX - e2.MaxX, e2.MinX - e1.MaxX));
+		var dy = Math.Max(0, Math.Max(e1.MinY - e2.MaxY, e2.MinY - e1.MaxY));
+		return Math.Sqrt((dx * dx) + (dy * dy));
 	}
 }
