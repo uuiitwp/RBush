@@ -161,4 +161,26 @@ public class KnnTests
 		//Failed!
 		//Assert.Equal(expected, knnResult[0]);
 	}
+
+	[Test]
+	public void Knn1HasEqualDistances()
+	{
+		var circles = new[]
+		{
+			new Circle(0, 0, 1),
+			new Circle(0, 0, 1),
+		};
+		var bush = new RBush<Circle>();
+		bush.BulkLoad(circles);
+		var queryPoint = new Point1(1, 1);
+		var count = 1;
+		var knn1Result = bush.Knn1(count, queryPoint, (a, b) => a.DistanceTo(b));
+		Assert.Equal(count, knn1Result.Count);
+		count = 2;
+		knn1Result = bush.Knn1(2, queryPoint, (a, b) => a.DistanceTo(b));
+		Assert.Equal(count, knn1Result.Count);
+		count = 3;
+		knn1Result = bush.Knn1(3, queryPoint, (a, b) => a.DistanceTo(b));
+		Assert.Equal(2, knn1Result.Count);
+	}
 }
