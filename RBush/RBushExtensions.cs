@@ -142,20 +142,21 @@ public static class RBushExtensions
 			queue.RemoveAt(0);
 			if (item.IsLeaf)
 			{
-				foreach (var i in item.Items)
+				var q = from x in item.Items
+						let e = (T1)x
+						let distance = func(e, element)
+						orderby distance
+						select new { distance, e };
+				foreach (var i in q)
 				{
-					var distance = func((T1)i, element);
 					if (distances.Count < k)
 					{
-						distances.Add(distance, (T1)i);
+						distances.Add(i.distance, i.e);
 					}
-					else
+					else if (i.distance < distances.Last().Key)
 					{
-						if (distance < distances.Last().Key)
-						{
-							distances.RemoveAt(distances.Count - 1);
-							distances.Add(distance, (T1)i);
-						}
+						distances.RemoveAt(distances.Count - 1);
+						distances.Add(i.distance, i.e);
 					}
 				}
 			}
