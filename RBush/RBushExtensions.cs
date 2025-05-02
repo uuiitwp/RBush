@@ -181,7 +181,7 @@ public static class RBushExtensions
 	Comparer<double>.Create((x, y) =>
 	{
 		var result = x.CompareTo(y);
-		return result == 0 ? -1 : result;
+		return result == 0 ? 1 : result;
 	});
 
 	private static double MinDistance(in Envelope e1, in Envelope e2)
