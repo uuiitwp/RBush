@@ -123,6 +123,7 @@ public static class RBushExtensions
 	{
 		ArgumentNullException.ThrowIfNull(tree);
 		ArgumentNullException.ThrowIfNull(func);
+		ArgumentNullException.ThrowIfNull(element);
 
 		if (k <= 0)
 		{
