@@ -1,7 +1,7 @@
 RBush
 =====
 
-RBush is a high-performance .NET library for 2D **spatial indexing** of points and rectangles.
+RBush is a high-performance .NET library for 2D/3D **spatial indexing** of points and rectangles.
 It's based on an optimized **R-tree** data structure with **bulk insertion** support.
 
 *Spatial index* is a special data structure for points and rectangles
@@ -16,7 +16,7 @@ This code has been copied over from the Javascript [RBush](https://github.com/mo
 
 ## Install
 
-Install with Nuget (`Install-Package RBush`).
+~~Install with Nuget (`Install-Package RBush`).~~
 
 ## Usage
 
@@ -127,7 +127,7 @@ changes made were to adapt coding styles and preferences.
 
 * single insertion: non-recursive R-tree insertion with overlap minimizing split routine from R\*-tree (split is very effective in JS, while other R\*-tree modifications like reinsertion on overflow and overlap minimizing subtree search are too slow and not worth it)
 * single deletion: non-recursive R-tree deletion using depth-first tree traversal with free-at-empty strategy (entries in underflowed nodes are not reinserted, instead underflowed nodes are kept in the tree and deleted only when empty, which is a good compromise of query vs removal performance)
-* bulk loading: OMT algorithm (Overlap Minimizing Top-down Bulk Loading) combined with Floyd–Rivest selection algorithm
+* bulk loading: OMT algorithm (Overlap Minimizing Top-down Bulk Loading) combined with Floydâ€“Rivest selection algorithm
 * bulk insertion: STLT algorithm (Small-Tree-Large-Tree)
 * search: standard non-recursive R-tree search
 
